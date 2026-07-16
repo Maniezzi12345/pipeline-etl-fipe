@@ -10,7 +10,7 @@ def buscar_marcas(tipo_veiculo="carros"):
     else:
         print(f"Erro: {response.status_code}")
         return []
-
+    
 
 def buscar_modelos(codigo_marca, tipo_veiculo="carros"):
     url = f"{BASE_URL}/{tipo_veiculo}/marcas/{codigo_marca}/modelos"
@@ -42,19 +42,40 @@ def buscar_preco(codigo_marca, codigo_modelo, codigo_ano, tipo_veiculo="carros")
         return []
 
 
-resultado = buscar_marcas()
-print("Resultado de buscar marcas:")
-print(resultado[:3])  
+def coletar_dados(limite_marcas=3, limite_modelos=2, limite_anos=2):
+    registros = []
 
-resultado = buscar_modelos(59)  
-print("Resultado de buscar modelos:")
-print(resultado["modelos"][:3])
+    marcas = buscar_marcas()[:limite_marcas]
+
+    for marca in marcas:
+        modelos = buscar_modelos(marca["codigo"])
+
+        for modelo in modelos["modelos"][:limite_modelos]:
+            anos = buscar_ano(marca["codigo"], modelo["codigo"])
+
+            for ano in anos[:limite_anos]:
+                preco = buscar_preco(marca["codigo"], modelo["codigo"], ano["codigo"])
+                registros.append(preco)
+
+    return registros
 
 
-print("Resultado de buscar ano:")
-resultado = buscar_ano(59, 5585)
-print(resultado[:3])
 
-print("Resultado codigo ano:")
-resultado = buscar_preco(59, 5585, "2011-3")
-print(resultado)
+resultado = coletar_dados()
+
+# resultado = buscar_marcas()
+# print("Resultado de buscar marcas:")
+# print(resultado[:3])  
+
+# resultado = buscar_modelos(59)  
+# print("Resultado de buscar modelos:")
+# print(resultado["modelos"][:3])
+
+
+# print("Resultado de buscar ano:")
+# resultado = buscar_ano(59, 5585)
+# print(resultado[:3])
+
+# print("Resultado codigo ano:")
+# resultado = buscar_preco(59, 5585, "2011-3")
+# print(resultado)
