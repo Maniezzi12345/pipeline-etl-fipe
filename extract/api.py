@@ -42,7 +42,7 @@ def buscar_preco(codigo_marca, codigo_modelo, codigo_ano, tipo_veiculo="carros")
         return []
 
 
-def coletar_dados(limite_marcas=3, limite_modelos=2, limite_anos=2):
+def coletar_dados(limite_marcas=20, limite_modelos=10, limite_anos=2):
     registros = []
 
     marcas = buscar_marcas()[:limite_marcas]
