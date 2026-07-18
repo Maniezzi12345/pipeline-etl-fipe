@@ -1,4 +1,5 @@
 import requests
+import time
 
 BASE_URL = "https://parallelum.com.br/fipe/api/v1"
 
@@ -56,6 +57,7 @@ def coletar_dados(limite_marcas=20, limite_modelos=10, limite_anos=2):
             for ano in anos[:limite_anos]:
                 preco = buscar_preco(marca["codigo"], modelo["codigo"], ano["codigo"])
                 registros.append(preco)
+                time.sleep(0.5)
 
     return registros
 
