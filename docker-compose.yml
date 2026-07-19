@@ -1,17 +1,15 @@
-version: '3.8'
-
-services:
-  postgres:
-    image: postgres:15
-    container_name: fipe-db
-    environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin123
-      POSTGRES_DB: fipe
-    ports:
-      - "5432:5432"
+app:
+    image: python:3.11
+    container_name: fipe-app
     volumes:
-      - fipe_data:/var/lib/postgresql/data
-
-volumes:
-  fipe_data:
+      - .:/app
+    working_dir: /app
+    depends_on:
+      - postgres
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: fipe
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    command: sh -c "sleep 5 && pip install pandas psycopg2-binary python-dotenv && python load/carregar.py"
