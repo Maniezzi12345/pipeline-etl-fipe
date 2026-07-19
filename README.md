@@ -146,3 +146,5 @@ Base URL: `https://parallelum.com.br/fipe/api/v1`
 
 *Projeto desenvolvido como parte do portfólio de Engenharia de Dados — 2026*
 *github.com/Maniezzi12345*
+
+
