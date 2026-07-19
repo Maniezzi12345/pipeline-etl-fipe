@@ -23,9 +23,9 @@ da API FIPE, transforma e carrega em banco de dados PostgreSQL para análise.
 - [x] Extract — coletar_dados() com loop para múltiplos veículos
 - [x] Transform — limpeza e extração de features
 - [x] Notebooks — análise exploratória e transformações
-- [x] Docker — PostgreSQL containerizado com Docker Compose
+- [x] Docker — dois containers com rede interna
 - [x] Modelagem — 3 tabelas dimensionais criadas no PostgreSQL
-- [ ] Load — inserir dados nas tabelas
+- [x] Load — inserção via container Python → PostgreSQL
 - [ ] Main — pipeline completo orquestrado
 - [ ] Airflow — DAG agendada
 
@@ -56,8 +56,6 @@ da API FIPE, transforma e carrega em banco de dados PostgreSQL para análise.
 
 ## Modelagem Dimensional
 
-Arquitetura dimensional com 3 tabelas no PostgreSQL:
-
 ```
 dim_marca
 ├── id_marca (PK)
@@ -86,26 +84,48 @@ fato_preco
 
 ---
 
+## Arquitetura Docker
+
+O projeto usa dois containers que se comunicam via rede interna:
+
+```
+Container fipe-app (Python)
+        ↓
+   rede interna Docker
+        ↓
+Container fipe-db (PostgreSQL)
+```
+
+Conectar Python do Windows ao PostgreSQL via TCP/IP causa problemas de
+encoding. A solução foi rodar o Python dentro do Docker — os containers
+se comunicam pela rede interna sem passar pelo Windows.
+
+As credenciais ficam no arquivo `.env` — nunca commitado no GitHub.
+
+---
+
 ## Como rodar
 
-### 1. Sobe o banco
+### 1. Configura o `.env`
+```bash
+cp .env.example .env
+# edita o .env com suas credenciais
+```
+
+### 2. Sobe os containers
 ```bash
 docker-compose up -d
 ```
 
-### 2. Cria as tabelas
+### 3. Cria as tabelas
 ```bash
-Get-Content SQL\fipe_db.sql | docker exec -i fipe-db psql -U admin -d fipe
-```
-
-### 3. Instala dependências
-```bash
-pip install requests pandas psycopg2-binary
+Get-Content SQL\fipe_db.sql | docker exec -i fipe-db psql -U postgres -d fipe
 ```
 
 ### 4. Roda o pipeline
 ```bash
-python main.py
+docker restart fipe-app
+docker logs fipe-app
 ```
 
 ---
@@ -115,7 +135,8 @@ python main.py
 ```
 pipeline-etl-fipe/
 ├── extract/
-│   └── api.py
+│   ├── api.py
+│   └── dados_fipe.py
 ├── transform/
 │   └── transformar.py
 ├── load/
@@ -125,6 +146,8 @@ pipeline-etl-fipe/
 ├── notebooks/
 │   └── analise.ipynb
 ├── docker-compose.yml
+├── .env.example
+├── .env
 ├── main.py
 └── README.md
 ```
@@ -146,5 +169,3 @@ Base URL: `https://parallelum.com.br/fipe/api/v1`
 
 *Projeto desenvolvido como parte do portfólio de Engenharia de Dados — 2026*
 *github.com/Maniezzi12345*
-
-
