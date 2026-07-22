@@ -37,5 +37,23 @@ services:
       DB_PASSWORD: postgres
     command: sh -c "pip install pandas psycopg2-binary python-dotenv && python main.py"
 
+  jupyter:
+    image: jupyter/scipy-notebook
+    container_name: fipe-jupyter
+    volumes:
+      - .:/home/jovyan/work
+    ports:
+      - "8888:8888"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: fipe
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+    command: start-notebook.sh --NotebookApp.token=''
+
 volumes:
   fipe_data:
