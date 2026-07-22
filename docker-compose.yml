@@ -1,15 +1,41 @@
-app:
+services:
+  postgres:
+    image: postgres:15
+    container_name: fipe-db
+    restart: always
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: fipe
+      LANG: en_US.utf8
+      LC_ALL: en_US.utf8
+    ports:
+      - "5432:5432"
+    volumes:
+      - fipe_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
     image: python:3.11
     container_name: fipe-app
     volumes:
       - .:/app
     working_dir: /app
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: fipe
       DB_USER: postgres
       DB_PASSWORD: postgres
-    command: sh -c "sleep 5 && pip install pandas psycopg2-binary python-dotenv && python load/carregar.py"
+    command: sh -c "pip install pandas psycopg2-binary python-dotenv && python main.py"
+
+volumes:
+  fipe_data:
