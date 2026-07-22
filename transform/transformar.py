@@ -7,10 +7,6 @@ sys.path.append("..")
 from extract.dados_fipe import dados_fipe
 
 
-# ─────────────────────────────────────────
-# FUNÇÕES DE TRANSFORMAÇÃO
-# ─────────────────────────────────────────
-
 def limpar_valor(valor_str):
     valor = valor_str.replace("R$ ", "")
     valor = valor.replace(".", "")
@@ -69,10 +65,6 @@ def renomear_colunas(df):
     ]]
 
 
-# ─────────────────────────────────────────
-# PIPELINE DE TRANSFORMAÇÃO
-# ─────────────────────────────────────────
-
 def transformar(dados):
     df = pd.DataFrame(dados)
 
@@ -98,7 +90,6 @@ def transformar(dados):
 
     df = renomear_colunas(df)
 
-    # separação em tabelas dimensionais
     df_marca = df[["prefixo", "marca"]].drop_duplicates().reset_index(drop=True)
     df_marca["id_marca"] = df_marca.index + 1
 
@@ -115,9 +106,6 @@ def transformar(dados):
     return df_marca, df_modelo, df_preco
 
 
-# ─────────────────────────────────────────
-# EXECUÇÃO DIRETA (teste)
-# ─────────────────────────────────────────
 
 if __name__ == "__main__":
     df_marca, df_modelo, df_preco = transformar(dados_fipe)
