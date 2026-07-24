@@ -23,11 +23,12 @@ da API FIPE, transforma e carrega em banco de dados PostgreSQL para análise.
 - [x] Extract — coletar_dados() com loop para múltiplos veículos
 - [x] Transform — 8 funções de limpeza e extração de features
 - [x] Notebooks — análise exploratória e transformações
-- [x] Docker — dois containers com rede interna e healthcheck
+- [x] Docker — 3 containers com rede interna e healthcheck
 - [x] Modelagem — 3 tabelas dimensionais criadas no PostgreSQL
 - [x] Load — 410 registros inseridos via container Python
 - [x] Main — pipeline completo orquestrado
-- [ ] Airflow — DAG agendada
+- [x] Análises — SQL e Pandas com dados reais do banco
+- [ ] Airflow — próximo projeto
 
 ---
 
@@ -38,6 +39,28 @@ da API FIPE, transforma e carrega em banco de dados PostgreSQL para análise.
 ✅ dim_modelo → 200 registros
 ✅ fato_preco → 200 registros
 ```
+
+---
+
+## Análises implementadas
+
+Análises realizadas no notebook `analise/analise_fipe.ipynb` conectado
+diretamente ao banco PostgreSQL via container Jupyter.
+
+Cada análise foi feita das duas formas — SQL via `pd.read_sql` e Pandas puro:
+
+| # | Análise | Técnica |
+|---|---------|---------|
+| 1 | Média de preço por marca | JOIN + GROUP BY + AVG |
+| 2 | Total de veículos por tipo | GROUP BY + COUNT |
+| 3 | 5 modelos mais caros | JOIN + ORDER BY + LIMIT |
+| 4 | 5 modelos mais baratos | JOIN + ORDER BY + LIMIT |
+| 5 | Variação de preço por marca | MAX - MIN |
+| 6 | Câmbio automático vs manual | GROUP BY + AVG |
+| 7 | Top 3 marcas com mais modelos 4x4 | WHERE + GROUP BY + COUNT |
+| 8 | Modelos com preço acima de R$ 200.000 | WHERE + JOIN |
+| 9 | Modelo mais caro, mais barato e média por marca | GROUP BY + MAX + MIN + AVG |
+| 10 | Combustíveis com mais de 30 modelos | GROUP BY + HAVING |
 
 ---
 
@@ -96,42 +119,26 @@ fato_preco
 
 ## Arquitetura Docker
 
-O projeto usa dois containers orquestrados via Docker Compose:
+O projeto usa três containers orquestrados via Docker Compose:
 
 ```
 docker-compose up -d
         ↓
-┌─────────────────────────────────────┐
-│         rede interna Docker          │
-│                                     │
-│  fipe-db (PostgreSQL 15)            │
-│  → aguarda healthcheck              │
-│  → banco fipe pronto                │
-│          ↑                          │
-│          │ healthcheck OK           │
-│          ↓                          │
-│  fipe-app (Python 3.11)             │
-│  → instala dependências             │
-│  → roda main.py                     │
-│  → conecta em fipe-db               │
-│  → insere 410 registros             │
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│           rede interna Docker             │
+│                                          │
+│  fipe-db (PostgreSQL 15)                 │
+│  → healthcheck garante disponibilidade   │
+│          ↓                               │
+│  fipe-app (Python 3.11)                  │
+│  → roda main.py automaticamente          │
+│  → insere 410 registros no banco         │
+│          ↓                               │
+│  fipe-jupyter (Jupyter Notebook)         │
+│  → análises SQL e Pandas                 │
+│  → acesso via localhost:8888             │
+└──────────────────────────────────────────┘
 ```
-
-**fipe-db** — container do banco de dados
-- Imagem: `postgres:15`
-- Banco: `fipe`
-- Healthcheck: verifica se aceita conexões antes de liberar o app
-
-**fipe-app** — container do pipeline Python
-- Imagem: `python:3.11`
-- Monta a pasta do projeto como volume
-- Só inicia após o `fipe-db` estar saudável (`condition: service_healthy`)
-- Roda `main.py` automaticamente
-
-Conectar Python do Windows ao PostgreSQL via TCP/IP causa problemas de
-encoding. A solução foi rodar o Python dentro do Docker — os containers
-se comunicam pela rede interna sem passar pelo Windows.
 
 As credenciais ficam no arquivo `.env` — nunca commitado no GitHub.
 
@@ -150,9 +157,6 @@ cp .env.example .env
 docker-compose up -d
 ```
 
-O `fipe-app` aguarda o banco ficar saudável (healthcheck) e roda
-o pipeline automaticamente.
-
 ### 3. Cria as tabelas no banco
 ```bash
 # Windows PowerShell
@@ -162,34 +166,16 @@ Get-Content SQL\fipe_db.sql | docker exec -i fipe-db psql -U postgres -d fipe
 docker exec -i fipe-db psql -U postgres -d fipe < SQL/fipe_db.sql
 ```
 
-### 4. Reinicia o pipeline
+### 4. Reinicia o pipeline se necessário
 ```bash
+docker exec -it fipe-db psql -U postgres -d fipe -c "TRUNCATE fato_preco, dim_modelo, dim_marca RESTART IDENTITY CASCADE;"
 docker restart fipe-app
-```
-
-### 5. Acompanha os logs
-```bash
 docker logs fipe-app
 ```
 
-Output esperado:
+### 5. Acessa o Jupyter para análises
 ```
-Iniciando pipeline
-Iniciando Transformação...
-→ dim_marca:  10 registros
-→ dim_modelo: 200 registros
-→ fato_preco: 200 registros
-Inserindo no banco...
-✅ 10 registros inseridos em dim_marca
-✅ 200 registros inseridos em dim_modelo
-✅ 200 registros inseridos em fato_preco
-```
-
-### 6. Verifica os dados no banco
-```bash
-docker exec -it fipe-db psql -U postgres -d fipe -c "SELECT COUNT(*) FROM dim_marca;"
-docker exec -it fipe-db psql -U postgres -d fipe -c "SELECT COUNT(*) FROM dim_modelo;"
-docker exec -it fipe-db psql -U postgres -d fipe -c "SELECT COUNT(*) FROM fato_preco;"
+http://localhost:8888
 ```
 
 ---
@@ -198,6 +184,8 @@ docker exec -it fipe-db psql -U postgres -d fipe -c "SELECT COUNT(*) FROM fato_p
 
 ```
 pipeline-etl-fipe/
+├── analise/
+│   └── analise_fipe.ipynb
 ├── extract/
 │   ├── api.py
 │   └── dados_fipe.py
